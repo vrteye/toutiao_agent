@@ -329,7 +329,7 @@ class ToutiaoPublisher(PublisherBase):
                 if location:
                     self._add_location(self.page, location)
                 if category:
-                    self._select_category(self.page, category)
+                    self._select_category_if_available(self.page, category)
                 self._add_ai_declaration(self.page)
                 self._publish(self.page)
 
@@ -733,6 +733,17 @@ class ToutiaoPublisher(PublisherBase):
         option.click()
         logger.info(f"[Publisher] ✅ 已选择分类: {category}")
 
+    def _select_category_if_available(self, page: Page, category: str):
+        """Select category only on pages that actually expose a category field."""
+        if "/weitoutiao/" in page.url:
+            logger.info(
+                "[Publisher] 当前是微头条发布页，无分类控件，跳过分类选择: "
+                f"{category}"
+            )
+            return
+
+        self._select_category(page, category)
+
     # ── 发布 ──────────────────────────────────────────
 
     def _publish(self, page: Page):
@@ -781,20 +792,20 @@ class ToutiaoPublisher(PublisherBase):
                     return false;
                 }""",
                 arg=url_before,
-                timeout=15000,
+                timeout=30000,
             )
             logger.info(f"[Publisher] 发布响应已返回，当前URL: {page.url}")
         except PlaywrightTimeout:
             # 超时但可能是网络慢，记录但不中断
             current_url = page.url
             logger.warning(
-                f"[Publisher] 发布等待超时(15s)，"
+                f"[Publisher] 发布等待超时(30s)，"
                 f"点击前URL: {url_before}, 当前URL: {current_url}"
             )
             # 截图保存当前状态用于排查
             page.screenshot(path=str(_COOKIE_DIR / "publish_timeout.png"))
 
-        time.sleep(2)
+        time.sleep(6)
 
         # 最终截图确认
         final_screenshot = str(_COOKIE_DIR / "publish_result.png")

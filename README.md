@@ -15,8 +15,8 @@
 ### 1. 环境准备
 
 ```bash
-conda create -n toutiao python=3.10 -y
-conda activate toutiao
+conda create -n coze python=3.10 -y
+conda activate coze
 pip install -r requirements.txt
 playwright install chromium
 ```
@@ -44,9 +44,9 @@ API Key 获取：https://bailian.console.aliyun.com/
 > 代理（`HTTP_PROXY`、`HTTPS_PROXY`）同样通过环境变量设置，非必需
 
 ### 3. 启动
-toutiao 是我的虚拟环境名称，这里需要更换自己的虚拟环境
+coze 是我的虚拟环境名称，这里需要更换自己的虚拟环境
 ```bash
-conda activate toutiao
+conda activate coze
 python main.py
 ```
 
