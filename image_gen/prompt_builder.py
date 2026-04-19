@@ -7,7 +7,7 @@ from config.settings import settings
 class CartoonPromptBuilder:
     """统一的 3D 卡通风格图片 Prompt 构建"""
 
-    STYLE_PREFIX = "3D卡通风格, 明亮色彩, 扁平插画, 简洁背景, 高质量, 精美细节"
+    STYLE_DETAIL = "明亮色彩, 简洁背景, 高质量, 精美细节"
 
     THEME_KEYWORDS = "职场/副业/个人成长主题"
 
@@ -16,7 +16,7 @@ class CartoonPromptBuilder:
 
     def build(self, scene_description: str) -> str:
         """构建图片生成 Prompt"""
-        prompt = f"{self.STYLE_PREFIX}, {scene_description}, {self.THEME_KEYWORDS}"
+        prompt = f"{self.style}风格, {self.STYLE_DETAIL}, {scene_description}, {self.THEME_KEYWORDS}"
         return prompt
 
     def build_negative_prompt(self) -> str:

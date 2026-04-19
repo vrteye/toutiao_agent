@@ -7,7 +7,7 @@
 - **多平台爬虫**: 爬取今日头条、知乎、微信公众号、百家号、36氪五大平台文章
 - **RAG 知识库**: FAISS 向量存储 + DashScope Embedding
 - **AI 文章生成**: qwen3-max 多步生成（大纲→扩写→润色→标题优化）
-- **卡通配图**: wanx2.1-t2i-turbo 异步生成 3D 卡通风格图片
+- **卡通配图**: qwen-image-2.0-pro 异步生成 3D 卡通风格图片
 - **Web 控制台**: Gradio 5个Tab页面管理全流程
 
 ## 快速开始
@@ -52,6 +52,50 @@ python main.py
 
 访问 http://127.0.0.1:7860
 
+## Linux 无图形服务器部署
+
+服务器建议使用 Playwright 无头模式运行，首次登录或 Cookie 过期时，WebUI 会直接显示今日头条扫码二维码，不需要服务器有桌面环境。
+
+```bash
+conda activate coze
+pip install -r requirements.txt
+playwright install chromium
+playwright install-deps chromium
+export DASHSCOPE_API_KEY="你的DashScope API Key"
+export GRADIO_USERNAME="admin"          # 可选，建议外网部署时设置
+export GRADIO_PASSWORD="强密码"         # 可选，建议外网部署时设置
+chmod +x start_gradio.sh
+./start_gradio.sh
+```
+
+也可以把本地私密配置写入 `.env.local`（该文件已被 Git 忽略）：
+
+```bash
+DASHSCOPE_API_KEY=你的DashScope API Key
+GRADIO_USERNAME=lilong
+GRADIO_PASSWORD=lilong
+```
+
+启动后会创建 Gradio 公网分享链接，也可以放通服务器防火墙或安全组的 `7860` 端口后，在浏览器访问：
+
+```text
+http://服务器公网IP:7860
+```
+
+如果不想开放端口，也可以继续使用 SSH 隧道：
+
+```bash
+ssh -L 7860:127.0.0.1:7860 user@server
+python main.py --host 127.0.0.1 --port 7860
+```
+
+然后进入「发布准备」Tab：
+
+1. 点击「登录头条号」
+2. 如果 Cookie 有效，会自动登录
+3. 如果 Cookie 过期，页面会显示二维码，用今日头条 App 扫码
+4. 扫码成功后 Cookie 会保存到 `data/cookies/toutiao_cookies.json`，后续发布自动复用
+
 ## 使用流程
 
 1. **配置管理** Tab: 查看和修改模型配置
@@ -72,7 +116,7 @@ python main.py
 ├── crawlers/            # 5个平台爬虫
 ├── rag/                 # RAG 知识库（清洗/分块/Embedding/FAISS）
 ├── agent/               # 文章生成 Agent + Pipeline
-├── image_gen/           # 图片生成（wanx2.1-t2i-turbo）
+├── image_gen/           # 图片生成（qwen-image-2.0-pro）
 ├── webui/               # Gradio Web UI
 ├── utils/               # 工具（日志/HTTP/Cookie）
 ├── data/                # 数据存储
@@ -84,8 +128,8 @@ python main.py
 所有模型名称在 `config/models.yaml` 中集中管理，更换模型只需修改此文件：
 
 - LLM: `qwen3-max-2026-01-23`
-- Embedding: `text-embedding-v3`
-- 图片: `wanx2.1-t2i-turbo`
+- Embedding: `qwen3-vl-embedding`
+- 图片: `qwen-image-2.0-pro`
 
 
 ## 工程亮点

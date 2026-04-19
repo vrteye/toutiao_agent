@@ -202,22 +202,19 @@ class ContentAgent:
             return "".join(chars[:int(len(chars) * max_w / current)])
 
     def _extract_scenes(self, content: str) -> list[str]:
-        """提取4个配图场景描述"""
+        """提取1个配图场景描述"""
         prompt = SCENE_EXTRACT_PROMPT.format(article_content=content[:2000])
         try:
             result = self._chat(user=prompt, temperature=0.8, max_tokens=1024)
             match = re.search(r'\[.*?\]', result, re.DOTALL)
             if match:
                 scenes = json.loads(match.group())
-                if isinstance(scenes, list) and len(scenes) >= 4:
-                    return scenes[:4]
+                if isinstance(scenes, list) and len(scenes) >= 1:
+                    return scenes[:1]
         except (json.JSONDecodeError, Exception) as e:
             logger.warning(f"[Agent] 场景提取失败: {e}")
 
         # 默认场景
         return [
             "一位年轻人在办公室认真工作，桌上放着电脑和笔记本",
-            "两人在咖啡馆讨论副业计划，充满热情",
-            "一个人站在山顶俯瞰城市，象征成长和突破",
-            "一群人围坐在一起分享经验，互相学习",
         ]

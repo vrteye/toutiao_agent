@@ -1164,7 +1164,7 @@ Call log:
 2026-04-16 18:01:32 | INFO     | models.generated_store:add:66 - [GeneratedStore] 保存生成文章: c416dba6 - 房贷压顶、精力不足？35个适合35+的副业真相，第2个太真实
 2026-04-16 18:01:32 | INFO     | webui.tabs.generate_tab:generate_article:143 - [生成] 文章已缓存: c416dba6
 2026-04-16 18:01:32 | INFO     | webui.tabs.generate_tab:generate_article:196 - [生成] 配图 1/4: 35岁上班族深夜看房贷账单，眉头紧锁，桌上堆满文件和咖啡杯。...
-2026-04-16 18:01:32 | INFO     | image_gen.cartoon_gen:generate:55 - [图片] 开始生成 1 张图片, 模型: wanx2.1-t2i-turbo
+2026-04-16 18:01:32 | INFO     | image_gen.cartoon_gen:generate:55 - [图片] 开始生成 1 张图片, 模型: qwen-image-2.0-pro
 2026-04-16 18:01:33 | DEBUG    | image_gen.cartoon_gen:_submit_tasks:122 - [图片] 任务已提交: 70a83928-765b-42cc-a785-d70375ca21a7
 2026-04-16 18:01:34 | INFO     | image_gen.cartoon_gen:generate:64 - [图片] 已提交 1 个任务，等待生成...
 2026-04-16 18:01:34 | INFO     | crawlers.toutiao_crawler:_search_via_playwright:408 - [头条] Playwright 搜索 '认知' 完成，获取 10 篇
@@ -1212,7 +1212,7 @@ Call log:
 2026-04-16 18:01:45 | INFO     | image_gen.cartoon_gen:generate:77 - [图片] 生成完成: 1/1 张
 2026-04-16 18:01:45 | INFO     | webui.tabs.generate_tab:generate_article:201 - [生成] 配图 1 完成: E:\project_git\toutiao_agent\output\images\c416dba6\7bc457d4_0.png
 2026-04-16 18:01:45 | INFO     | webui.tabs.generate_tab:generate_article:196 - [生成] 配图 2/4: 前HR在温馨书房录制《简历优化课》，电脑屏幕亮着PPT，旁边...
-2026-04-16 18:01:45 | INFO     | image_gen.cartoon_gen:generate:55 - [图片] 开始生成 1 张图片, 模型: wanx2.1-t2i-turbo
+2026-04-16 18:01:45 | INFO     | image_gen.cartoon_gen:generate:55 - [图片] 开始生成 1 张图片, 模型: qwen-image-2.0-pro
 2026-04-16 18:01:45 | INFO     | crawlers.kr36_crawler:search:211 - [36氪] 搜索 '转型' 完成，获取 0 篇
 2026-04-16 18:01:45 | INFO     | crawlers.base:_crawl_sync:291 - [kr36] 关键词 '转型': 搜索 0 篇, 新增 0 篇
 2026-04-16 18:01:45 | DEBUG    | crawlers.base:delay:226 - [kr36] 等待 4.2s
@@ -1270,7 +1270,7 @@ Call log:
 2026-04-16 18:02:02 | INFO     | image_gen.cartoon_gen:generate:77 - [图片] 生成完成: 1/1 张
 2026-04-16 18:02:02 | INFO     | webui.tabs.generate_tab:generate_article:201 - [生成] 配图 2 完成: E:\project_git\toutiao_agent\output\images\c416dba6\bd5c72ff_0.png
 2026-04-16 18:02:02 | INFO     | webui.tabs.generate_tab:generate_article:196 - [生成] 配图 3/4: 老张在小区阳台用笔记本发朋友圈送免费指南，手机弹出80+好友...
-2026-04-16 18:02:02 | INFO     | image_gen.cartoon_gen:generate:55 - [图片] 开始生成 1 张图片, 模型: wanx2.1-t2i-turbo
+2026-04-16 18:02:02 | INFO     | image_gen.cartoon_gen:generate:55 - [图片] 开始生成 1 张图片, 模型: qwen-image-2.0-pro
 2026-04-16 18:02:02 | DEBUG    | crawlers.base:_on_console:106 - [Browser] console: Access to XMLHttpRequest at 'https://verify.snssdk.com/captcha/reportFrontend' from origin 'https://36kr.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control
 2026-04-16 18:02:02 | DEBUG    | crawlers.base:_on_console:106 - [Browser] console: report err:  TypeError: Network request failed
     at s.onreadystatechange (https://lf-cdn-tos.bytescm.com/obj/static/sec_sdk_build/3.3.4/captcha/index.js:23:6755)
@@ -1318,7 +1318,7 @@ Call log:
 2026-04-16 18:02:14 | INFO     | image_gen.cartoon_gen:generate:77 - [图片] 生成完成: 1/1 张
 2026-04-16 18:02:14 | INFO     | webui.tabs.generate_tab:generate_article:201 - [生成] 配图 3 完成: E:\project_git\toutiao_agent\output\images\c416dba6\cdc3c81f_0.png
 2026-04-16 18:02:15 | INFO     | webui.tabs.generate_tab:generate_article:196 - [生成] 配图 4/4: IT老王躺沙发刷手机，知识星球收入到账提示弹出，背景是熟睡的...
-2026-04-16 18:02:15 | INFO     | image_gen.cartoon_gen:generate:55 - [图片] 开始生成 1 张图片, 模型: wanx2.1-t2i-turbo
+2026-04-16 18:02:15 | INFO     | image_gen.cartoon_gen:generate:55 - [图片] 开始生成 1 张图片, 模型: qwen-image-2.0-pro
 2026-04-16 18:02:15 | DEBUG    | image_gen.cartoon_gen:_submit_tasks:122 - [图片] 任务已提交: 423ecdff-61bf-4529-a577-c5c34045b10e
 2026-04-16 18:02:15 | INFO     | image_gen.cartoon_gen:generate:64 - [图片] 已提交 1 个任务，等待生成...
 2026-04-16 18:02:16 | INFO     | crawlers.toutiao_crawler:_search_via_playwright:408 - [头条] Playwright 搜索 '跳槽' 完成，获取 10 篇

@@ -12,7 +12,7 @@ from config.settings import settings
 
 
 class SceneExtractor:
-    """从文章内容中提取 4 个关键场景描述"""
+    """从文章内容中提取关键场景描述"""
 
     DEFAULT_SCENES = [
         "一位年轻人在办公室认真工作，桌上放着电脑和咖啡，充满干劲",
@@ -42,7 +42,7 @@ class SceneExtractor:
 4. 场景要覆盖文章的开头、中间、结尾不同阶段
 
 请用 JSON 数组格式输出：
-["场景描述1", "场景描述2", "场景描述3", "场景描述4"]"""
+["场景描述1"]"""
 
         try:
             resp = self.client.chat.completions.create(

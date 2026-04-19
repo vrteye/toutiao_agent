@@ -1,10 +1,8 @@
-"""wanx2.1-t2i-turbo 异步卡通图片生成封装
+"""DashScope 图片生成封装
 
-异步调用流程：
-1. 提交任务（创建异步任务，获取 task_id）
-2. 轮询任务状态（每 poll_interval 秒查询一次）
-3. 获取结果 URL
-4. 下载图片到本地
+支持：
+- qwen-image-2.0-pro：同步 MultiModalConversation 接口
+- wanx 系列：旧版异步 image-synthesis 接口
 """
 from __future__ import annotations
 
@@ -14,13 +12,14 @@ from pathlib import Path
 from typing import Optional
 
 import httpx
+from dashscope import MultiModalConversation
 from loguru import logger
 
 from config.settings import settings, PROJECT_ROOT
 
 
 class WanxImageGenerator:
-    """通义万相文生图 V2 Turbo 异步调用封装"""
+    """DashScope 文生图调用封装"""
 
     SUBMIT_URL = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis"
     TASK_URL = "https://dashscope.aliyuncs.com/api/v1/tasks/{task_id}"
@@ -54,6 +53,9 @@ class WanxImageGenerator:
         n = n or self.n
         logger.info(f"[图片] 开始生成 {n} 张图片, 模型: {self.model}")
 
+        if self._is_qwen_image_model:
+            return self._generate_qwen_images(prompt, negative_prompt, n)
+
         # Step 1: 提交任务
         task_ids = self._submit_tasks(prompt, negative_prompt, n)
         if not task_ids:
@@ -86,6 +88,84 @@ class WanxImageGenerator:
             if paths:
                 all_paths.extend(paths)
         return all_paths
+
+    @property
+    def _is_qwen_image_model(self) -> bool:
+        return self.model.startswith("qwen-image")
+
+    def _generate_qwen_images(self, prompt: str, negative_prompt: str, n: int) -> list[str]:
+        """使用 qwen-image-2.0-pro 同步接口生成图片。"""
+        n = max(1, min(n, 6))
+        prompt = self._build_qwen_prompt(prompt)
+        negative_prompt = negative_prompt or "模糊, 低质量, 变形, 文字水印"
+
+        messages = [
+            {
+                "role": "user",
+                "content": [{"text": prompt[:800]}],
+            }
+        ]
+
+        try:
+            response = MultiModalConversation.call(
+                api_key=self.api_key,
+                model=self.model,
+                messages=messages,
+                result_format="message",
+                stream=False,
+                watermark=False,
+                prompt_extend=True,
+                negative_prompt=negative_prompt[:500],
+                size=self.size,
+                n=n,
+            )
+        except Exception as e:
+            logger.error(f"[图片] qwen-image 调用异常: {e}")
+            return []
+
+        if response.status_code != 200:
+            logger.error(
+                "[图片] qwen-image 调用失败: "
+                f"{response.status_code} - {response.code} - {response.message}"
+            )
+            return []
+
+        urls = self._extract_qwen_image_urls(response.output)
+        if not urls:
+            logger.error(f"[图片] qwen-image 未返回图片 URL: {response.output}")
+            return []
+
+        paths = []
+        for i, url in enumerate(urls[:n]):
+            path = self._download_image(url, index=i)
+            if path:
+                paths.append(path)
+
+        logger.info(f"[图片] qwen-image 生成完成: {len(paths)}/{n} 张")
+        return paths
+
+    def _build_qwen_prompt(self, prompt: str) -> str:
+        """qwen-image 不支持 style 参数，风格放进提示词。"""
+        if self.style and self.style not in prompt:
+            return f"{self.style}风格, {prompt}"
+        return prompt
+
+    @staticmethod
+    def _extract_qwen_image_urls(output) -> list[str]:
+        urls = []
+        for choice in WanxImageGenerator._value(output, "choices", []):
+            message = WanxImageGenerator._value(choice, "message", {})
+            for item in WanxImageGenerator._value(message, "content", []):
+                url = WanxImageGenerator._value(item, "image", "")
+                if url:
+                    urls.append(url)
+        return urls
+
+    @staticmethod
+    def _value(obj, key: str, default=None):
+        if isinstance(obj, dict):
+            return obj.get(key, default)
+        return getattr(obj, key, default)
 
     def _submit_tasks(self, prompt: str, negative_prompt: str, n: int) -> list[str]:
         """提交异步任务，返回 task_id 列表"""

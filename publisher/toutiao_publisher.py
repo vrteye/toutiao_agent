@@ -15,7 +15,7 @@ import os
 import time
 import base64
 from pathlib import Path
-from typing import Optional, List
+from typing import Generator, Optional, List
 
 from playwright.sync_api import Page, TimeoutError as PlaywrightTimeout
 
@@ -23,10 +23,12 @@ from config.settings import settings
 from utils.logger import logger
 from publisher.publisher_base import PublisherBase, PublishResult
 from utils.cookie_manager import CookieManager
+from utils.publish_tags import append_publish_tags
 
 # 全局变量
 _COOKIE_DIR = Path(__file__).parent / "data" / "publisher"
 _COOKIE_DIR.mkdir(parents=True, exist_ok=True)
+_QRCODE_PATH = _COOKIE_DIR / "qrcode.png"
 
 # 微头条发布页 URL (PC端)
 _MICRO_PUBLISH_URL = "https://mp.toutiao.com/profile_v4/weitoutiao/publish"
@@ -149,26 +151,50 @@ class ToutiaoPublisher(PublisherBase):
 
     # ── 登录管理 ──────────────────────────────────────
 
-    def login(self) -> bool:
-        """登录今日头条 - 先加载 Cookie 自动登录，失败才弹扫码窗口"""
+    def login(self, timeout: int = 180) -> bool:
+        """登录今日头条 - 先加载 Cookie 自动登录，失败才扫码登录"""
+        steps = self.login_steps(timeout=timeout)
+        while True:
+            try:
+                next(steps)
+            except StopIteration as done:
+                return bool(done.value)
+
+    def login_steps(self, timeout: int = 180) -> Generator[tuple[str, Optional[str]], None, bool]:
+        """逐步登录今日头条，供 WebUI 在无图形服务器上展示二维码。
+
+        Yields:
+            (status_text, qrcode_image_path)
+        """
         try:
             from playwright.sync_api import sync_playwright
 
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=self.headless)
-                context = browser.new_context(user_agent=_USER_AGENT)
+                context = browser.new_context(
+                    user_agent=_USER_AGENT,
+                    viewport={"width": 1280, "height": 900},
+                    locale="zh-CN",
+                )
                 self.page = context.new_page()
+                yield "正在打开头条创作者后台...", None
 
                 # 先加载已保存的 Cookie
                 cookies = self.cookie_manager.load_cookies("toutiao")
                 if cookies:
                     logger.info(f"[Publisher] 加载了 {len(cookies)} 个已保存的 Cookie")
                     context.add_cookies(cookies)
+                    yield f"已加载 {len(cookies)} 个 Cookie，正在验证登录状态...", None
                 else:
                     logger.info("[Publisher] 无已保存的 Cookie，需要扫码登录")
+                    yield "未找到 Cookie，准备生成扫码登录二维码...", None
 
                 # 访问创作者后台
-                self.page.goto("https://mp.toutiao.com")
+                self.page.goto("https://mp.toutiao.com", timeout=30000)
+                try:
+                    self.page.wait_for_load_state("networkidle", timeout=10000)
+                except Exception:
+                    pass
                 time.sleep(3)
 
                 # 检查是否已登录（Cookie 有效则自动登录成功）
@@ -176,28 +202,41 @@ class ToutiaoPublisher(PublisherBase):
                     logger.info("[Publisher] Cookie 有效，自动登录成功！")
                     # 刷新保存最新 Cookie（延长有效期）
                     self._save_cookies()
+                    yield "✅ Cookie 有效，自动登录成功！", None
                     return True
 
                 # Cookie 无效或不存在，需要扫码登录
                 logger.info("[Publisher] Cookie 已过期或不存在，请扫描二维码登录...")
                 time.sleep(2)
-                self.page.screenshot(path=str(_COOKIE_DIR / "qrcode.png"))
+                self.page.screenshot(path=str(_QRCODE_PATH))
+                yield (
+                    "请用今日头条 App 扫描下方二维码；扫码后保持页面打开，系统会自动保存 Cookie。",
+                    str(_QRCODE_PATH),
+                )
 
                 # 等待用户扫码登录
-                for i in range(60):
+                for i in range(timeout):
                     if self._check_logged_in_on_page():
                         logger.info("[Publisher] 扫码登录成功！")
                         self._save_cookies()
+                        yield "✅ 扫码登录成功！Cookie 已保存，后续可自动发布。", None
                         return True
                     time.sleep(1)
                     if i % 10 == 9:
                         logger.info(f"[Publisher] 等待扫码登录中... ({i + 1}s)")
+                        try:
+                            self.page.screenshot(path=str(_QRCODE_PATH))
+                        except Exception:
+                            pass
+                        yield f"等待扫码登录中... ({i + 1}/{timeout}s)", str(_QRCODE_PATH)
 
                 logger.error("[Publisher] 登录超时，请重试")
+                yield "❌ 登录超时，请刷新二维码后重试。", str(_QRCODE_PATH)
                 return False
 
         except Exception as e:
             logger.error(f"[Publisher] 登录失败: {e}")
+            yield f"❌ 登录失败: {e}", None
             return False
 
     def _check_logged_in_on_page(self) -> bool:
@@ -385,7 +424,7 @@ class ToutiaoPublisher(PublisherBase):
                     self._upload_images(self.page, image_paths)
                 if location:
                     self._add_location(self.page, location)
-                self._add_ai_declaration(self.page)
+                # self._add_ai_declaration(self.page)
                 self._publish(self.page)
 
                 result.success = True
@@ -605,17 +644,9 @@ class ToutiaoPublisher(PublisherBase):
 
     def _build_micro_content(self, content: str, topics: Optional[List[str]] = None) -> str:
         """组装微头条完整内容：正文 + 话题"""
-        fixed_topics = ["职场", "副业搞钱", "个人成长"]
-        dynamic_topics = topics or []
-        all_topics = fixed_topics + dynamic_topics[:2]
-
-        parts = [content]
-        if all_topics:
-            topic_str = " ".join(f"#{topic}#" for topic in all_topics)
-            parts.append(topic_str)
-
-        full = "\n".join(parts)
-        logger.info(f"[Publisher] 内容组装完成: {len(content)}字正文 + {len(all_topics)}个话题")
+        full = append_publish_tags(content, extra_topics=topics)
+        topic_count = len(full.split("#")) // 2
+        logger.info(f"[Publisher] 内容组装完成: {len(content)}字正文 + {topic_count}个话题")
         return full
 
     # ── 位置 / 声明 / 分类 ────────────────────────────

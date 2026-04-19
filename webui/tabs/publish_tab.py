@@ -8,7 +8,10 @@ from config.settings import settings
 from models.generated_store import get_generated_store
 from publisher.toutiao_publisher import get_toutiao_publisher, close_publisher
 from utils.image_cache import image_cache
+from utils.publish_tags import append_publish_tags
 from webui.tabs.generate_tab import get_latest_article
+
+ARTICLE_IMAGE_COUNT = 1
 
 # JS 剪贴板复制脚本
 _COPY_JS = """
@@ -41,11 +44,17 @@ def create_publish_tab() -> gr.Blocks:
                 check_login_btn = gr.Button("检查登录状态", variant="secondary")
                 logout_btn = gr.Button("退出登录", variant="stop")
             login_status = gr.Textbox(label="登录状态", interactive=False)
+            login_qrcode = gr.Image(
+                label="扫码登录二维码",
+                type="filepath",
+                height=320,
+                visible=False,
+                interactive=False,
+            )
             gr.Markdown(
-                "点击「登录头条号」后会弹出浏览器窗口，"
-                "系统会先加载已保存的 Cookie 尝试自动登录，如果 Cookie 有效则直接登录成功。"
-                "仅当 Cookie 过期时才需要**扫码登录**。"
-                "登录成功后 Cookie 会持久保存，下次自动登录。"
+                "点击「登录头条号」后，系统会先加载已保存的 Cookie 尝试自动登录；"
+                "仅当 Cookie 过期时才会在这里显示二维码。"
+                "扫码成功后 Cookie 会持久保存，下次自动登录，适合部署在无图形界面的 Linux 服务器。"
             )
 
         # ── 发布设置 ─────────────────────────────
@@ -129,9 +138,9 @@ def create_publish_tab() -> gr.Blocks:
         # ── 事件绑定 ─────────────────────────────
 
         # 登录
-        login_btn.click(fn=do_login, outputs=[login_status])
-        check_login_btn.click(fn=check_login, outputs=[login_status])
-        logout_btn.click(fn=do_logout, outputs=[login_status])
+        login_btn.click(fn=do_login, outputs=[login_status, login_qrcode])
+        check_login_btn.click(fn=check_login, outputs=[login_status, login_qrcode])
+        logout_btn.click(fn=do_logout, outputs=[login_status, login_qrcode])
 
         # 文章选择
         article_selector.change(
@@ -194,22 +203,33 @@ def _get_article(article_id: str = None):
     return get_latest_article()
 
 
+def _get_publish_content(article) -> str:
+    """预览/复制/发布都使用同一份末尾带标签的正文。"""
+    if not article:
+        return ""
+    return append_publish_tags(
+        article.content,
+        title=article.title,
+        hot_topic=article.hot_topic,
+    )
+
+
 # ── 登录管理 ──────────────────────────────────────
 
 def do_login():
     """扫码登录"""
     try:
-        # 强制非无头模式，显示浏览器窗口供用户扫码/输入
         from publisher.toutiao_publisher import ToutiaoPublisher
-        publisher = ToutiaoPublisher(headless=False)
-        success = publisher.login()
-        if success:
-            return "✅ 登录成功！Cookie 已保存，后续无需重复登录"
-        else:
-            return "❌ 登录超时或失败，请重试"
+        publisher = ToutiaoPublisher(headless=settings.publisher.headless)
+        for status, qrcode_path in publisher.login_steps(timeout=180):
+            image_update = gr.update(
+                value=qrcode_path,
+                visible=bool(qrcode_path),
+            )
+            yield status, image_update
     except Exception as e:
         logger.error(f"登录失败：{e}")
-        return f"❌ 登录失败：{e}"
+        yield f"❌ 登录失败：{e}", gr.update(value=None, visible=False)
 
 
 def check_login():
@@ -220,29 +240,28 @@ def check_login():
         # 轻量检查（如果浏览器在同一线程且已启动）
         try:
             if publisher.is_logged_in():
-                return "✅ 已登录，可以发布文章"
+                return "✅ 已登录，可以发布文章", gr.update(value=None, visible=False)
         except Exception:
             pass  # greenlet 线程错误，走深度验证
 
         # 深度验证（会重建浏览器 + 加载 Cookie + 访问创作者后台确认）
         if publisher.verify_login():
-            return "✅ 已登录，可以发布文章"
+            return "✅ 已登录，可以发布文章", gr.update(value=None, visible=False)
 
-        return "❌ 未登录或登录已过期，请点击登录"
+        return "❌ 未登录或登录已过期，请点击登录", gr.update(value=None, visible=False)
     except Exception as e:
-        return f"⚠️ 检查失败: {e}"
+        return f"⚠️ 检查失败: {e}", gr.update(value=None, visible=False)
 
 
 def do_logout():
     """退出登录（清除 Cookie）"""
     try:
-        from publisher.toutiao_publisher import _COOKIE_FILE
+        from utils.cookie_manager import cookie_manager
         close_publisher()
-        if _COOKIE_FILE.exists():
-            _COOKIE_FILE.unlink()
-        return "✅ 已退出登录，Cookie 已清除"
+        cookie_manager.clear_cookies("toutiao")
+        return "✅ 已退出登录，Cookie 已清除", gr.update(value=None, visible=False)
     except Exception as e:
-        return f"⚠️ 退出失败: {e}"
+        return f"⚠️ 退出失败: {e}", gr.update(value=None, visible=False)
 
 
 # ── 文章预览 ──────────────────────────────────────
@@ -309,8 +328,10 @@ def select_article(article_id):
     cached = image_cache.get(article.id)
     if cached and cached.get("image_paths"):
         image_paths = cached["image_paths"]
+    image_paths = image_paths[:ARTICLE_IMAGE_COUNT]
 
-    content = f"{article.title}\n\n{article.content}"
+    publish_content = _get_publish_content(article)
+    content = f"{article.title}\n\n{publish_content}"
     info_lines = [
         f"标题: {article.title}",
         f"字数: {article.word_count}",
@@ -342,8 +363,10 @@ def refresh_publish():
     cached = image_cache.get(article.id)
     if cached and cached.get("image_paths"):
         image_paths = cached["image_paths"]
+    image_paths = image_paths[:ARTICLE_IMAGE_COUNT]
 
-    content = f"{article.title}\n\n{article.content}"
+    publish_content = _get_publish_content(article)
+    content = f"{article.title}\n\n{publish_content}"
     info_lines = [
         f"标题: {article.title}",
         f"字数: {article.word_count}",
@@ -374,14 +397,14 @@ def _get_title_text() -> str:
 
 def _get_content_text() -> str:
     article = _get_article(_current_article_id)
-    return article.content if article and article.content else ""
+    return _get_publish_content(article) if article else ""
 
 
 def _get_all_text() -> str:
     article = _get_article(_current_article_id)
     if not article:
         return ""
-    return f"{article.title}\n\n{article.content}"
+    return f"{article.title}\n\n{_get_publish_content(article)}"
 
 
 # ── 发布操作 ──────────────────────────────────────
@@ -403,6 +426,8 @@ def do_publish(article_id: str, publish_type: str, category: str):
         cached = image_cache.get(article.id)
         if cached and cached.get("image_paths"):
             image_paths = cached["image_paths"]
+        image_paths = image_paths[:ARTICLE_IMAGE_COUNT]
+        publish_content = _get_publish_content(article)
 
         if publish_type == "micro_toutiao":
             # 从 hot_topic 生成动态话题（最多2个）
@@ -415,7 +440,7 @@ def do_publish(article_id: str, publish_type: str, category: str):
                         dynamic_topics.append(t)
 
             result = publisher.publish_micro_toutiao(
-                content=article.content,
+                content=publish_content,
                 image_paths=image_paths,
                 topics=dynamic_topics,
                 location=getattr(settings.publisher, "default_location", ""),
@@ -423,7 +448,7 @@ def do_publish(article_id: str, publish_type: str, category: str):
         else:
             result = publisher.publish_article(
                 title=article.title,
-                content=article.content,
+                content=publish_content,
                 image_paths=image_paths,
                 category=category or settings.publisher.default_category,
             )
@@ -434,6 +459,7 @@ def do_publish(article_id: str, publish_type: str, category: str):
             store.update(
                 article_id,
                 status="published",
+                content=publish_content,
                 published_at=result.published_at,
                 published_url=result.published_url,
             )
@@ -461,10 +487,12 @@ def do_batch_publish(category: str):
             cached = image_cache.get(article.id)
             if cached and cached.get("image_paths"):
                 image_paths = cached["image_paths"]
+            image_paths = image_paths[:ARTICLE_IMAGE_COUNT]
+            publish_content = _get_publish_content(article)
 
             result = publisher.publish_article(
                 title=article.title,
-                content=article.content,
+                content=publish_content,
                 image_paths=image_paths,
                 category=category or settings.publisher.default_category,
             )
@@ -473,6 +501,7 @@ def do_batch_publish(category: str):
                 store.update(
                     article.id,
                     status="published",
+                    content=publish_content,
                     published_at=result.published_at,
                     published_url=result.published_url,
                 )

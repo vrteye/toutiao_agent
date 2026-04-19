@@ -1,10 +1,14 @@
 """Gradio Web 应用主文件"""
 from __future__ import annotations
 
+import os
+
+os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")
+
 import gradio as gr
 from loguru import logger
 
-from config.settings import settings
+from config.settings import env_settings, settings
 from webui.tabs.config_tab import create_config_tab
 from webui.tabs.crawler_tab import create_crawler_tab
 from webui.tabs.generate_tab import create_generate_tab
@@ -110,13 +114,19 @@ def main(port: int | None = None, host: str | None = None, share: bool | None = 
     
     logger.info(f"[启动] 应用创建完成，耗时: {time.time() - start_time:.2f}秒")
     logger.info(f"[启动] 启动 Gradio Web UI... (http://{server_name}:{server_port})")
+
+    gradio_auth = None
+    if env_settings.gradio_username and env_settings.gradio_password:
+        gradio_auth = (env_settings.gradio_username, env_settings.gradio_password)
+        logger.info("[启动] 已启用 Gradio 访问账号密码保护")
     
     # 启动服务器
     app.launch(
         server_name=server_name,
         server_port=server_port,
         share=server_share,
-        inbrowser=True,
+        auth=gradio_auth,
+        inbrowser=False,
         theme=gr.themes.Soft()
     )
 

@@ -19,6 +19,8 @@ class _EnvSettings:
         self.dashscope_api_key: str = os.environ.get("DASHSCOPE_API_KEY", "")
         self.http_proxy: str = os.environ.get("HTTP_PROXY", "")
         self.https_proxy: str = os.environ.get("HTTPS_PROXY", "")
+        self.gradio_username: str = os.environ.get("GRADIO_USERNAME", "")
+        self.gradio_password: str = os.environ.get("GRADIO_PASSWORD", "")
 
 
 # 全局单例
@@ -42,19 +44,19 @@ class LLMConfig:
 
 class EmbeddingConfig:
     def __init__(self, data: dict):
-        self.name: str = data.get("name", "text-embedding-v3")
-        self.dimension: int = data.get("dimension", 1024)
-        self.batch_size: int = data.get("batch_size", 25)
-        self.batch_interval: float = data.get("batch_interval", 1.0)
+        self.name: str = data.get("name", "qwen3-vl-embedding")
+        self.dimension: int = data.get("dimension", 1536)
+        self.batch_size: int = data.get("batch_size", 20)
+        self.batch_interval: float = data.get("batch_interval", 0.2)
 
 
 class ImageGenConfig:
     def __init__(self, data: dict):
-        self.name: str = data.get("name", "wanx2.1-t2i-turbo")
+        self.name: str = data.get("name", "qwen-image-2.0-pro")
         self.style: str = data.get("style", "3D卡通")
         self.size: str = data.get("size", "1024*1024")
-        self.n: int = data.get("n", 4)
-        self.async_mode: bool = data.get("async_mode", True)
+        self.n: int = data.get("n", 1)
+        self.async_mode: bool = data.get("async_mode", False)
         self.poll_interval: int = data.get("poll_interval", 5)
         self.max_poll_times: int = data.get("max_poll_times", 60)
 

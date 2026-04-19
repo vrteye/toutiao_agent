@@ -54,7 +54,7 @@ class GeneratedArticle:
     content: str = ""                 # 正文（约1000字）
     hot_topic: str = ""               # 关联的热点话题
     rag_sources: list[str] = field(default_factory=list)  # RAG 检索到的来源
-    scenes: list[str] = field(default_factory=list)       # 4个配图场景描述
+    scenes: list[str] = field(default_factory=list)       # 配图场景描述
     image_paths: list[str] = field(default_factory=list)  # 配图文件路径
     word_count: int = 0
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())

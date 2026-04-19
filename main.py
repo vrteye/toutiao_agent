@@ -7,7 +7,7 @@
 3. python main.py --port 8080        # 指定端口
 4. python main.py -p 8080            # 指定端口（简写）
 
-启动后访问 http://127.0.0.1:<端口号>
+启动后访问 http://<服务器IP>:<端口号>
 """
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ if __name__ == "__main__":
         "--host",
         type=str,
         default=None,
-        help="Web UI 监听地址（默认: 127.0.0.1，可在 models.yaml 中修改）",
+        help="Web UI 监听地址（默认: 0.0.0.0，可在 models.yaml 中修改）",
     )
     parser.add_argument(
         "--share",
